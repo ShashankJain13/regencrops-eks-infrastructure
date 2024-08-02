@@ -1,0 +1,61 @@
+image:
+  name: 531946564784.dkr.ecr.us-east-1.amazonaws.com/regencrops-terraform-base-image:latest
+  aws:
+    oidc-role: $AWS_ROLE_ARN_DEV
+
+definitions:
+  chownCloneDirectory: &chown-Clone-Directory chown -R 16536:16536 $BITBUCKET_CLONE_DIR/*
+
+  variables:
+  - &configuration_directory
+    name: CONFIGURATION_DIRECTORY
+    default: configurations/05_eks_cluster
+    allowed-values:
+    - configurations/05_eks_cluster
+
+  - &environment
+    name: ENVIRONMENT
+    default: uat
+    allowed-values:
+    - prd
+    - uat
+    - dev
+
+pipelines:
+  custom:
+    "01 - Terraform Plan and Apply":
+    - variables:
+      - *configuration_directory
+      - *environment
+    - step:
+        name: "Step: Terraform Init and Plan"
+        oidc: true
+        script:
+        - *chown-Clone-Directory
+        - sh run_terraform_commands.sh "PLAN"
+    - step:
+        name: "Step: Terraform Plan and Apply"
+        oidc: true
+        script:
+        - *chown-Clone-Directory
+        - sh run_terraform_commands.sh "APPLY"
+        trigger: manual # This step will be triggered manually
+
+    "02 - Terraform Destroy":
+    - variables:
+      - *configuration_directory
+      - *environment
+    - step:
+        name: "Step: Terraform Destroy Plan"
+        oidc: true
+        script:
+        - *chown-Clone-Directory
+        - sh run_terraform_commands.sh "DESTROY_PLAN"
+    - step:
+        name: "Step: Terraform Destroy"
+        oidc: true
+        script:
+        - *chown-Clone-Directory
+        - sh run_terraform_commands.sh "DESTROY"
+        trigger: manual # This step will be triggered manually
+
